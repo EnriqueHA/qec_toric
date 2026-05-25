@@ -1,0 +1,36 @@
+from dataclasses import dataclass, field
+import torch
+
+@dataclass
+class ToricArgs():
+    
+    # Based on GNN-RNN args:
+    # https://github.com/LangeMoritz/GNN_decoder
+
+    error_rate: float = 0.001
+    error_rates: list[float] | None = None  # if set, train on mix of error rates
+    distance: int = 5
+    seed: int | None = None
+    norm: float | int = torch.inf
+
+    # Torch
+    device: torch.device = field(
+    default_factory=lambda: torch.device(
+        "mps" if torch.backends.mps.is_available() else
+        "cuda" if torch.cuda.is_available() else
+        "cpu"
+    ))
+    batch_size: int = 2048
+    n_batches: int = 256
+    n_epochs: int = 600
+    lr: float = 1e-3
+    min_lr: float = 1e-4
+    prefetch: bool = True            # background data prefetching
+    auto_batch_size: bool = True     # auto-tune batch_size at training start
+
+    # Model
+    embedding_features: list = field(default_factory=lambda: [3, 64, 256])
+    hidden_size: int = 256
+    n_cnn_layers: int = 4
+    # log_wandb: bool = False
+    # wandb_project: str = "GNN-google-data"
