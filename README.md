@@ -6,4 +6,4 @@ Experiments with the Toric code: Circuit-level noise simulations and Equivariant
 Circuit-level noise event detection simulations using [Stim](https://quantum-journal.org/papers/q-2021-07-06-497/).
 
 ## END 
-Implementation of the Equivariant Neural Decoder proposed by Egorov, Bondesan & Welling: [The END: An Equivariant Neural Decoder for Quantum Error Correction](https://arxiv.org/abs/2304.07362)
+Implementation of the Equivariant Neural Decoder proposed by Egorov, Bondesan & Welling: [The END: An Equivariant Neural Decoder for Quantum Error Correction](https://arxiv.org/abs/2304.07362) Original implementation:[Frog](https://github.com/evgenii-egorov/frog_)
