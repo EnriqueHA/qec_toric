@@ -5,10 +5,10 @@ import stim
 
 class ToricCode:
     def __init__(self, d: int, rounds: int, noise_model: str = "depolarizing-equal_op", 
-                 noise_prob = 0.001,
-                 noise_single_prob: float = 0.001,
-                 noise_two_prob: float = 0.001,
-                 noise_spam_prob: float = 0.01):
+                error_rate = 0.001,
+                error_rate_single: float = 0.001,
+                error_rate_two: float = 0.001,
+                error_rate_spam: float = 0.01):
         """
         Circuit-level noise is considered in this implementation.
 
@@ -19,34 +19,34 @@ class ToricCode:
                                 all occur with the same probability p 
         - depolarizing-biased_op: Define different probabililities for single-qubit, two-qubit, and spam errors
         - custom-biased_op: Different error probabilities for X, Y, and Z errors and
-                                 also different for single-qubit, two-qubit, and spam errors.
-                                 two-qubit errors order: IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ
+                                also different for single-qubit, two-qubit, and spam errors.
+                                two-qubit errors order: IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ
         """
         if noise_model == "depolarizing-equal_op":
-            self.p = noise_prob
-            p_singleq = tuple([noise_prob / 3] * 3) # px, py, pz for single-qubit errors
-            p_twoq = tuple([noise_prob / 15] * 15) # 15 possible two-qubit Pauli errors
-            p_spam = tuple([noise_prob / 3] * 3) # px, py, pz for spam errors (preparation and measurement)
+            self.p = error_rate
+            p_singleq = tuple([error_rate / 3] * 3) # px, py, pz for single-qubit errors
+            p_twoq = tuple([error_rate / 15] * 15) # 15 possible two-qubit Pauli errors
+            p_spam = tuple([error_rate / 3] * 3) # px, py, pz for spam errors (preparation and measurement)
         
         elif noise_model == "depolarizing-biased_op":
-            self.p = noise_prob
-            p_singleq = tuple([noise_single_prob / 3] * 3) # px, py, pz for single-qubit errors
-            p_twoq = tuple([noise_two_prob / 15] * 15) # 15 possible two-qubit Pauli errors
-            p_spam = tuple([noise_spam_prob / 3] * 3) # px, py, pz for spam errors (preparation and measurement)
+            self.p = error_rate
+            p_singleq = tuple([error_rate_single / 3] * 3) # px, py, pz for single-qubit errors
+            p_twoq = tuple([error_rate_two / 15] * 15) # 15 possible two-qubit Pauli errors
+            p_spam = tuple([error_rate_spam / 3] * 3) # px, py, pz for spam errors (preparation and measurement)
 
         elif noise_model == "custom-biased_op":
             # For custom-biased_op, the user can directly input the probabilities as parameters
-            if len(noise_single_prob) != 3:
-                raise ValueError("For custom-biased_op, noise_single_prob should be a tuple of 3 values for px, py, pz.")
-            elif len(noise_two_prob) != 15:
-                raise ValueError("For custom-biased_op, noise_two_prob should be a tuple of 15 values for the two-qubit Pauli errors." \
+            if len(error_rate_single) != 3:
+                raise ValueError("For custom-biased_op, error_rate_single should be a tuple of 3 values for px, py, pz.")
+            elif len(error_rate_two) != 15:
+                raise ValueError("For custom-biased_op, error_rate_two should be a tuple of 15 values for the two-qubit Pauli errors." \
                                 " The order of the 15 two-qubit Pauli errors should be: IX, IY, IZ, XI, XX, XY, XZ, YI, YX, YY, YZ, ZI, ZX, ZY, ZZ.")
-            elif len(noise_spam_prob) != 3:
-                raise ValueError("For custom-biased_op, noise_spam_prob should be a tuple of 3 values for px, py, pz.")
+            elif len(error_rate_spam) != 3:
+                raise ValueError("For custom-biased_op, error_rate_spam should be a tuple of 3 values for px, py, pz.")
             else: 
-                p_singleq = noise_single_prob
-                p_twoq = noise_two_prob
-                p_spam = noise_spam_prob
+                p_singleq = error_rate_single
+                p_twoq = error_rate_two
+                p_spam = error_rate_spam
         else:
             raise ValueError("Invalid noise model. Choose from 'depolarizing-equal_op', 'depolarizing-biased_op', or 'custom-biased_op'.")
 
@@ -92,10 +92,11 @@ class ToricCode:
             # Rounds 2 to rounds-1
             self._include_initial_detectors(self.circuit)
             loop_circuit = stim.Circuit()
+            loop_circuit.append("SHIFT_COORDS", [], [0, 1, 0, 0])
             self._extract_syndrome(loop_circuit)
             self._include_loop_detectors(loop_circuit)
             self.circuit += loop_circuit * (self.rounds - 1)
-
+            
             self._noise_spam(self.circuit, self.data_qubits) # Apply measurement noise to data qubits
             self.circuit.append("M", self.data_qubits) # Measure data qubits at the end of the final round
             self._include_final_detectors(self.circuit) # Add detectors comparing final ancilla with data qubits measurements
@@ -182,7 +183,7 @@ class ToricCode:
                 circuit.append("CX", parallel_cnot_pairs)
                 self._noise_two_qubit(circuit, parallel_cnot_pairs)
                 circuit.append("TICK")
-    
+        
     def _return_x_ancillas_to_z_basis(self, circuit):
         circuit.append("H", self.x_ancillas)
         self._noise_single_qubit(circuit, self.x_ancillas)
@@ -208,7 +209,9 @@ class ToricCode:
         num_z_ancillas = len(self.z_ancillas)
 
         for i in range(num_z_ancillas):
-            circuit.append("DETECTOR", [stim.target_rec(-i-1)])
+            ancilla = self.z_ancillas[i]
+            x, y = self.z_ancillas_coords[ancilla] # Coordinates
+            circuit.append("DETECTOR", [stim.target_rec(i- num_z_ancillas)], [0, 0, x, y])
 
     def _include_loop_detectors(self, circuit):
         """
@@ -218,13 +221,20 @@ class ToricCode:
         num_z_ancillas = len(self.z_ancillas)
         num_tot_ancillas = num_x_ancillas + num_z_ancillas
 
+        # Add detectors
         for i in range(num_x_ancillas):
-            circuit.append("DETECTOR", [stim.target_rec(- num_z_ancillas - i - 1), 
-                                         stim.target_rec(- num_z_ancillas - num_tot_ancillas - i - 1)])
+            ancilla = self.x_ancillas[i]
+            x, y = self.x_ancillas_coords[ancilla] # Coordinates
+            circuit.append("DETECTOR", [stim.target_rec(i - num_tot_ancillas), 
+                                        stim.target_rec(i - 2*num_tot_ancillas)],
+                                        [1, 0, x, y])
 
         for i in range(num_z_ancillas):
-            circuit.append("DETECTOR", [stim.target_rec(- i - 1), 
-                                         stim.target_rec(- num_tot_ancillas - i - 1)])
+            ancilla = self.z_ancillas[i]
+            x, y = self.z_ancillas_coords[ancilla] # Coordinates
+            circuit.append("DETECTOR", [stim.target_rec(i - num_z_ancillas), 
+                                        stim.target_rec(i - num_z_ancillas - num_tot_ancillas)],
+                                        [0, 0, x, y])
             
     def _include_final_detectors(self, circuit):
         """
@@ -234,10 +244,10 @@ class ToricCode:
         num_data_qubits = len(self.data_qubits)
 
         for count_ancilla, ancilla in enumerate(self.z_ancillas):
-            ax, ay = self.z_ancillas_coords[ancilla]
+            x, y = self.z_ancillas_coords[ancilla]
             data_neighbours = []
             for dx, dy in neighbours:
-                target_coord = ((ax + dx) % (2 * self.d), (ay + dy) % (2 * self.d)) # Wrap around for toric code
+                target_coord = ((x + dx) % (2 * self.d), (y + dy) % (2 * self.d)) # Wrap around for toric code
                 data_qubit = self.coords_to_data[target_coord]
                 data_neighbours.append(data_qubit)
             
@@ -245,7 +255,7 @@ class ToricCode:
             ancilla_target = stim.target_rec(-num_data_qubits - len(self.z_ancillas) + count_ancilla)
             rec_targets = data_neighbours_offset + [ancilla_target]
 
-            circuit.append("DETECTOR", rec_targets)
+            circuit.append("DETECTOR", rec_targets, [0, 1, x, y])
 
     def _logical_error_observables(self, circuit):
         """
@@ -263,11 +273,11 @@ class ToricCode:
         # X1: Horizontal loop of X operators
         # x1_qubits = [data_qubits[k + d] for k in range(d)] # Data qubits in the horizontal line, coordinates (2k,1)
 
-        # Z2: Vertical loop of Z operators
-        z2_qubits = [data_qubits[k] for k in range(d)] # Data qubits in the vertical line, coordinates (2k+1,0)
+        # Z2: Horizontal loop of Z operators
+        z2_qubits = [data_qubits[k] for k in range(d)] # Data qubits in the horizontal line, coordinates (2k+1,0)
 
-        # X2: Horizontal loop of X operators
-        # x2_qubits = [data_qubits[2*d*k] for k in range(d)] # Data qubits in the horizontal line, coordinates (1,2k)
+        # X2: Vertical loop of X operators
+        # x2_qubits = [data_qubits[2*d*k] for k in range(d)] # Data qubits in the vertical line, coordinates (1,2k)
         
         # Add the logical observables to the circuit
         for obs_idx, logical_qubits in enumerate([z1_qubits, z2_qubits]):
@@ -348,19 +358,18 @@ class ToricCode:
     def draw(self):
         return self.circuit.diagram('timeline-svg')
 
-    def sample_detectors(self, shots: int, bit_packed: bool = False) -> np.ndarray:
+    def sample_detectors(self, shots: int, separate_observables = True, bit_packed: bool = False) -> np.ndarray:
         """
         Samples the detector events for the given number of shots. 
         bit_packed = True: Returns the detector events in a bit-packed format (for large d)
-                   = False: Returns a 2D array of shape (shots, num_detectors) with boolean entries
+                    = False: Returns a 2D array of shape (shots, num_detectors) with boolean entries
         """
         sampler = self.circuit.compile_detector_sampler()
-        detector_events, observable_flips = sampler.sample(shots, bit_packed = bit_packed) 
+        detector_events, observable_flips = sampler.sample(shots, separate_observables = separate_observables, bit_packed = bit_packed) 
         return detector_events, observable_flips
-    
+
     def save_circuit(self, filename: str):
         """
         Saves the circuit to a file in Stim's text format.
         """
         self.circuit.to_file(filename)
-    
