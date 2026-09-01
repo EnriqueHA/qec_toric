@@ -20,6 +20,9 @@ from config.args import Args
 from data.data import Dataset
 from models.end import End
 
+# Inspired by: https://arxiv.org/abs/2304.07362
+# Original: https://github.com/evgenii-egorov/frog_
+
 def train():
     args = Args()
     cli_args = parse_args()

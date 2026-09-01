@@ -3,6 +3,9 @@ import torch.nn as nn
 from wide_resnet import ToricWideResNet
 from symmetries_pool import TranslationPool
 
+# Inspired by: https://arxiv.org/abs/2304.07362
+# Original: https://github.com/evgenii-egorov/frog_
+
 class End(nn.Module):
     """ Equivariant Wide-RestNet implementation for END decoder"""
 
