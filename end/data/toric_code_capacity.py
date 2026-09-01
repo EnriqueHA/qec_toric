@@ -38,8 +38,7 @@ class ToricCodeCapacity:
         """
         Sparse binary matrix with each row corresponding to an X logical operator
         of a toric code with lattice size L. Constructed from the
-        homology groups of the repetition codes using the Kunneth
-        theorem.
+        homology groups of the repetition codes using the Kunneth theorem.
         """
         H1 = csc_matrix(([1], ([0],[0])), shape=(1,L), dtype=np.uint8)
         H0 = csc_matrix(np.ones((1, L), dtype=np.uint8))
@@ -68,8 +67,7 @@ class ToricCodeCapacity:
         """
         Sparse binary matrix with each row corresponding to an Z logical operator
         of a toric code with lattice size L. Constructed from the
-        homology groups of the repetition codes using the Kunneth
-        theorem.
+        homology groups of the repetition codes using the Kunneth theorem.
         """
         H1 = csc_matrix(([1], ([0],[0])), shape=(1,L), dtype=np.uint8)
         H0 = csc_matrix(np.ones((1, L), dtype=np.uint8))

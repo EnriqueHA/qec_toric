@@ -6,10 +6,10 @@ from symmetries_pool import TranslationPool
 class End(nn.Module):
     """ Equivariant Wide-RestNet implementation for END decoder"""
 
-    def __init__(self):
+    def __init__(self, init_channels):
         super().__init__()
         
-        self.toric_wrn = ToricWideResNet(init_channels=128)
+        self.toric_wrn = ToricWideResNet(init_channels)
         self.trans_pool = TranslationPool()
 
     def forward(self, x):
